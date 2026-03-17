@@ -4,18 +4,24 @@ import { getURL } from '@/lib/utils'
 import { cookies } from 'next/headers'
 
 export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url)
-    const code = searchParams.get('code')
-    const next = searchParams.get('next') ?? '/onboarding'
+    const requestUrl = new URL(request.url)
+    const code = requestUrl.searchParams.get('code')
+    const next = requestUrl.searchParams.get('next') ?? '/onboarding'
+    const error = requestUrl.searchParams.get('error')
+    const errorDescription = requestUrl.searchParams.get('error_description')
 
-    const siteUrl = getURL()
+    const origin = requestUrl.origin
+
+    console.log('[Auth Callback] Processing callback:', {
+        origin,
+        next,
+        hasCode: !!code,
+        hasError: !!error
+    })
 
     if (code) {
-        console.log('[Auth Callback] Code received, exchanging for session...')
-
         const cookieStore = await cookies()
-
-        // Create Supabase client with explicit cookie handling for Route Handler
+        
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -29,26 +35,24 @@ export async function GET(request: Request) {
                             cookiesToSet.forEach(({ name, value, options }) =>
                                 cookieStore.set(name, value, options)
                             )
-                        } catch (error) {
-                            console.error('[Auth Callback] Error setting cookies:', error)
+                        } catch (err) {
+                            console.error('[Auth Callback] Cookie set error:', err)
                         }
                     },
                 },
             }
         )
 
-        const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code)
+        const { data: sessionData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
-        if (!error && sessionData.session) {
-            console.log('[Auth Callback] Session created successfully')
-            console.log('[Auth Callback] Session access_token:', sessionData.session.access_token ? 'PRESENT' : 'MISSING')
-            console.log('[Auth Callback] Cookies being set...')
+        if (!exchangeError && sessionData.session) {
+            console.log('[Auth Callback] Session established successfully')
+            
+            // Get user to check onboarding status
+            const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-            // Get user to check profile
-            const { data: { user } } = await supabase.auth.getUser()
-
-            if (user) {
-                console.log('[Auth Callback] User ID:', user.id)
+            if (user && !userError) {
+                console.log('[Auth Callback] User identified:', user.id)
 
                 // Check if user has completed onboarding
                 const { data: profile, error: profileError } = await supabase
@@ -58,55 +62,39 @@ export async function GET(request: Request) {
                     .single()
 
                 if (profileError) {
-                    console.warn('[Auth Callback] Profile query error:', profileError.message)
+                    console.warn('[Auth Callback] Profile fetch warning:', profileError.message)
                 }
 
-                console.log('[Auth Callback] Profile found:', !!profile)
-                console.log('[Auth Callback] Onboarding completed:', profile?.onboarding_completed)
-
-                // Decide destination based on onboarding status
+                // Decide destination
                 let destination: string
-
                 if (profile?.onboarding_completed) {
-                    // Existing user - go to chat (or use 'next' if provided)
                     destination = next !== '/onboarding' ? next : '/chat'
-                    console.log('[Auth Callback] Existing user, redirecting to:', destination)
                 } else {
-                    // New user or incomplete onboarding - go to onboarding
                     destination = '/onboarding'
-                    console.log('[Auth Callback] New user or incomplete onboarding, redirecting to:', destination)
                 }
 
-                // Create redirect response
-                const redirectUrl = new URL(destination, siteUrl)
-                const response = NextResponse.redirect(redirectUrl)
-
-                // Explicitly copy all cookies to the response
-                // This ensures cookies are preserved in Vercel edge runtime
-                const allCookies = cookieStore.getAll()
-                allCookies.forEach(cookie => {
-                    response.cookies.set(cookie.name, cookie.value, {
-                        path: '/',
-                        httpOnly: cookie.name.includes('auth-token'),
-                        secure: process.env.NODE_ENV === 'production',
-                        sameSite: 'lax',
-                        maxAge: 60 * 60 * 24 * 7, // 7 days
-                    })
-                })
-
-                console.log('[Auth Callback] Redirecting with', allCookies.length, 'cookies')
-                return response
+                console.log('[Auth Callback] Redirecting to:', destination)
+                
+                // For Route Handlers, after calling cookieStore.set in exchangeCodeForSession,
+                // a simple redirect should carry the cookies in Next.js 15.
+                return NextResponse.redirect(new URL(destination, origin))
+            } else {
+                console.error('[Auth Callback] User fetch error:', userError?.message)
+                return NextResponse.redirect(`${origin}/login?error=Session created but user not found`)
             }
-
-            console.error('[Auth Callback] Could not get user after session creation')
-            return NextResponse.redirect(`${siteUrl}/login?error=Session created but could not get user`)
         }
 
-        if (error) {
-            console.error('[Auth Callback] Exchange error:', error.message)
+        if (exchangeError) {
+            console.error('[Auth Callback] Code exchange error:', exchangeError.message)
+            return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(exchangeError.message)}`)
         }
     }
 
-    console.warn('[Auth Callback] Authentication failed or no code')
-    return NextResponse.redirect(`${siteUrl}/login?error=Could not authenticate with Google`)
+    if (error || errorDescription) {
+        console.error('[Auth Callback] Provider error:', error, errorDescription)
+        return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(errorDescription || error || 'Auth failed')}`)
+    }
+
+    console.warn('[Auth Callback] Fallback: redirecting to login')
+    return NextResponse.redirect(`${origin}/login?error=Authentication failed`)
 }

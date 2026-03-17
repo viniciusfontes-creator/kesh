@@ -86,43 +86,47 @@ export async function POST(req: Request) {
     const systemPrompt = buildSystemPrompt(today, userHash)
 
     try {
-        // 1. Converter mensagens para o formato de modelo do SDK (gerencia tools automaticamente)
+        // 1. Convert UI messages to Model messages
         const rawModelMessages = await convertToModelMessages(messages)
+        
+        // 2. Filter out any system messages from history and prepare for Gemini
+        // We use our own dynamic system prompt via the 'system' parameter.
+        const modelMessages = rawModelMessages
+            .filter(m => m.role !== 'system')
+            .map(m => {
+                // Only process user messages that have content parts (for multimodal)
+                if (m.role !== 'user' || !Array.isArray(m.content)) return m
 
-        // 2. Refinar partes multimodais (áudio/imagem) para o Gemini
-        const modelMessages = rawModelMessages.map(m => {
-            if (!Array.isArray(m.content)) return m
-
-            return {
-                ...m,
-                content: m.content.map(p => {
-                    // Tratar imagens
-                    if (p.type === 'image') {
-                        const dataStr = typeof (p as any).image === 'string' ? (p as any).image : ''
-                        if (dataStr.startsWith('data:')) {
-                            const [header, base64] = dataStr.split(',')
-                            const mimeType = header.match(/:(.*?);/)?.[1] || (p as any).mimeType
-                            return { ...p, image: base64, mimeType } as any
+                return {
+                    ...m,
+                    content: m.content.map(p => {
+                        // Handle Image parts specifically
+                        if (p.type === 'image') {
+                            const data = (p as any).image
+                            if (typeof data === 'string' && data.startsWith('data:')) {
+                                const [header, base64] = data.split(',')
+                                const mimeType = header.match(/:(.*?);/)?.[1] || (p as any).mimeType || 'image/jpeg'
+                                return { type: 'image', image: base64, mimeType }
+                            }
                         }
-                    }
-                    
-                    // Tratar arquivos (áudio/outros)
-                    if (p.type === 'file') {
-                        const dataStr = typeof (p as any).data === 'string' ? (p as any).data : ''
-                        if (dataStr.startsWith('data:')) {
-                            const [header, base64] = dataStr.split(',')
-                            const mimeType = header.match(/:(.*?);/)?.[1] || (p as any).mediaType || (p as any).mimeType
-                            return { ...p, data: base64, mimeType } as any
+                        
+                        // Handle File parts (audio/pdf/etc)
+                        if (p.type === 'file') {
+                            const data = (p as any).data
+                            if (typeof data === 'string' && data.startsWith('data:')) {
+                                const [header, base64] = data.split(',')
+                                const mimeType = header.match(/:(.*?);/)?.[1] || (p as any).mediaType || (p as any).mimeType || 'application/octet-stream'
+                                return { type: 'file', data: base64, mimeType }
+                            }
                         }
-                    }
 
-                    return p
-                })
-            }
-        })
+                        return p
+                    })
+                }
+            })
 
         const result = await streamText({
-            model: google('gemini-flash-latest'),
+            model: google('gemini-1.5-flash-latest'),
             system: systemPrompt,
             messages: modelMessages as any[],
             tools: {

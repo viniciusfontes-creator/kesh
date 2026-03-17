@@ -65,9 +65,9 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url)
     }
 
-    // Already auth inside login page -> /chat
-    if (user && pathname.startsWith('/login')) {
-        console.log('[Middleware] Auth user at login page. Sending to /chat')
+    // Already auth inside login/signup page -> /chat
+    if (user && (pathname.startsWith('/login') || pathname.startsWith('/signup'))) {
+        console.log(`[Middleware] Auth user at ${pathname}. Sending to /chat`)
         const url = request.nextUrl.clone()
         url.pathname = '/chat'
         return NextResponse.redirect(url)
