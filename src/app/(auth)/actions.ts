@@ -30,7 +30,7 @@ export async function login(formData: FormData) {
         return
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
     })
@@ -39,12 +39,31 @@ export async function login(formData: FormData) {
         redirectWithMessage('/login', 'Email ou senha incorretos')
     }
 
+    // Check if user has completed onboarding
+    if (authData.user) {
+        const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('onboarding_completed')
+            .eq('user_id', authData.user.id)
+            .single()
+
+        revalidatePath('/', 'layout')
+
+        // Redirect based on onboarding status
+        if (profile?.onboarding_completed) {
+            redirect('/chat')
+        } else {
+            redirect('/onboarding')
+        }
+    }
+
     revalidatePath('/', 'layout')
     redirect('/onboarding')
 }
 
 export async function signup(formData: FormData) {
     const supabase = await createClient()
+    const baseUrl = getURL()
 
     const email = formData.get('email')
     const password = formData.get('password')
@@ -62,6 +81,10 @@ export async function signup(formData: FormData) {
     const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
+        options: {
+            // Redirect to callback after email verification
+            emailRedirectTo: `${baseUrl}/auth/callback?next=/onboarding`,
+        },
     })
 
     if (error) {
@@ -69,12 +92,17 @@ export async function signup(formData: FormData) {
     }
 
     if (data.session) {
+        // Email confirmation disabled - user is logged in immediately
         revalidatePath('/', 'layout')
         redirect('/onboarding')
     }
 
-    // Se deu certo mas exige confirmação
-    redirectWithMessage('/login', 'Conta criada! Verifique seu email para confirmar.', 'message')
+    // Email confirmation required - show success message
+    redirectWithMessage(
+        '/login',
+        'Conta criada com sucesso! Verifique seu email para ativar sua conta e fazer login.',
+        'message'
+    )
 }
 
 export async function signInWithGoogle() {
