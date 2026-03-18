@@ -54,8 +54,7 @@ export async function updateSession(request: NextRequest) {
     const isAppPath = pathname.startsWith('/dashboard') ||
         pathname.startsWith('/chat') ||
         pathname.startsWith('/contas') ||
-        pathname.startsWith('/configuracoes') ||
-        pathname === '/'
+        pathname.startsWith('/configuracoes')
 
     // Basic protection: No user -> /login (except for /login /signup /auth)
     if (!user && isAppPath) {
