@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { getUserSubscription } from '@/lib/subscription'
-import { checkTransactionsQuota, incrementTransactionsQuota } from '@/lib/quota'
+import { checkTransactionQuota, incrementTransactionQuota } from '@/lib/quota'
 
 export async function GET(req: Request) {
     try {
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
             const isPremium = subscription.status === 'active' || subscription.status === 'trialing'
 
             if (!isPremium) {
-                const quotaStatus = await checkTransactionsQuota(user.id)
+                const quotaStatus = await checkTransactionQuota(user.id)
                 if (quotaStatus.exceeded) {
                     return NextResponse.json({
                         error: 'Limite de transações manuais atingido',
@@ -113,7 +113,7 @@ export async function POST(req: Request) {
             const subscription = await getUserSubscription()
             const isPremium = subscription.status === 'active' || subscription.status === 'trialing'
             if (!isPremium) {
-                await incrementTransactionsQuota(user.id)
+                await incrementTransactionQuota(user.id)
             }
         }
 
