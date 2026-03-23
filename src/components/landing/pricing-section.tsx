@@ -12,8 +12,9 @@ const plans = [
   {
     name: 'Mensal',
     price: 'R$ 15,00',
-    description: 'Gestão essencial.',
-    features: ['Categorização por IA', 'Dashboard Completo', 'Até 5 Contas'],
+    period: '/mês',
+    description: 'Gestão completa sem compromisso',
+    features: ['Interações ilimitadas com IA', 'Transações ilimitadas', 'Até 5 contas bancárias', 'Dashboard com 6 indicadores', 'Gráficos avançados'],
     cta: 'Começar Agora',
     stripePriceId: 'price_1TC6PBFz7A1qFfrQxpfZJMdU',
     popular: false
@@ -21,18 +22,24 @@ const plans = [
   {
     name: 'Trimestral',
     price: 'R$ 30,00',
-    description: 'Ideal para disciplina.',
-    features: ['Tudo do mensal', 'Suporte Prioritário', 'Análises Avançadas'],
-    cta: 'Economize Agora',
+    period: '/trimestre',
+    discount: '33% OFF',
+    pricePerMonth: 'R$ 10/mês',
+    description: 'Economize com disciplina financeira',
+    features: ['Tudo do plano mensal', 'Economize R$ 15 a cada 3 meses', 'Suporte prioritário', 'Cancele quando quiser'],
+    cta: 'Economize 33%',
     stripePriceId: 'price_1TC6PBFz7A1qFfrQtSPzk26x',
     popular: true
   },
   {
     name: 'Anual',
     price: 'R$ 100,00',
-    description: 'Liberdade total.',
-    features: ['Tudo do trimestral', 'Faturamento por IA', 'Consultoria Personalizada'],
-    cta: 'Acesso Vitalício',
+    period: '/ano',
+    discount: '44% OFF',
+    pricePerMonth: 'R$ 8,33/mês',
+    description: 'Liberdade total, preço imbatível',
+    features: ['Tudo do plano mensal', 'Economize R$ 80 por ano', 'Melhor custo-benefício', 'Acesso antecipado a novidades'],
+    cta: 'Melhor Oferta',
     stripePriceId: 'price_1TC6PBFz7A1qFfrQ8Na74XcQ',
     popular: false
   }
@@ -109,12 +116,24 @@ export function PricingSection() {
               )}
               <Card className={`h-full p-8 flex flex-col bg-card/50 border-border/40 hover:border-primary/20 transition-all ${plan.popular ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}>
                 <div className="mb-6">
-                  <h3 className="text-lg font-bold mb-1">{plan.name}</h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-bold">{plan.name}</h3>
+                    {plan.discount && (
+                      <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        {plan.discount}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-bold">{plan.price}</span>
-                    <span className="text-muted-foreground text-xs">/período</span>
+                    <span className="text-muted-foreground text-xs">{plan.period}</span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2">{plan.description}</p>
+                  {plan.pricePerMonth && (
+                    <p className="text-xs text-muted-foreground font-medium mt-1">
+                      {plan.pricePerMonth}
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground mt-3 leading-relaxed">{plan.description}</p>
                 </div>
 
                 <div className="space-y-4 mb-8 flex-1">

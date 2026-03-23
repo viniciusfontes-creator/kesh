@@ -42,24 +42,28 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Nome e tipo são obrigatórios' }, { status: 400 })
         }
 
-        // Check subscription and quota (free users limited to 1 account)
+        // Check subscription and quota
+        // Free users: 1 account
+        // Premium users (any plan): 5 accounts
         const subscription = await getUserSubscription()
         const isPremium = subscription.status === 'active' || subscription.status === 'trialing'
 
-        if (!isPremium) {
-            // Count existing accounts
-            const { count } = await supabase
-                .from('contas')
-                .select('*', { count: 'exact', head: true })
-                .eq('user_id', user.id)
+        // Count existing accounts
+        const { count } = await supabase
+            .from('contas')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
 
-            if (count !== null && count >= 1) {
-                return NextResponse.json({
-                    error: 'Limite de contas atingido',
-                    message: 'Você atingiu o limite de 1 conta bancária do plano gratuito. Faça upgrade para adicionar mais contas.',
-                    upgradeUrl: '/configuracoes/assinatura'
-                }, { status: 403 })
-            }
+        const limit = isPremium ? 5 : 1
+
+        if (count !== null && count >= limit) {
+            return NextResponse.json({
+                error: 'Limite de contas atingido',
+                message: isPremium
+                    ? `Você atingiu o limite de ${limit} contas bancárias do seu plano. Entre em contato para aumentar esse limite.`
+                    : `Você atingiu o limite de ${limit} conta bancária do plano gratuito. Faça upgrade para adicionar até 5 contas.`,
+                upgradeUrl: isPremium ? undefined : '/configuracoes/assinatura'
+            }, { status: 403 })
         }
 
         const { data, error } = await supabase

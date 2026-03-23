@@ -81,33 +81,39 @@ export function SubscriptionPageClient({ subscription, prices }: SubscriptionPag
     }
   }
 
-  const planData = prices.map((price) => ({
-    name: price.product_name.includes('Mensal')
-      ? 'Mensal'
-      : price.product_name.includes('Trimestral')
-        ? 'Trimestral'
-        : 'Anual',
-    price: `R$ ${(price.unit_amount / 100).toFixed(2).replace('.', ',')}`,
-    period: price.interval === 'month'
-      ? price.interval_count === 1
-        ? '/mês'
-        : `/trimestre`
-      : '/ano',
-    description:
-      price.product_name.includes('Mensal')
-        ? 'Gestão essencial.'
+  const planData = prices.map((price) => {
+    const isMonthly = price.interval === 'month' && price.interval_count === 1
+    const isQuarterly = price.interval === 'month' && price.interval_count === 3
+    const isYearly = price.interval === 'year'
+
+    return {
+      name: price.product_name.includes('Mensal')
+        ? 'Mensal'
         : price.product_name.includes('Trimestral')
-          ? 'Ideal para disciplina.'
-          : 'Liberdade total.',
-    features:
-      price.interval === 'month' && price.interval_count === 1
-        ? ['Categorização por IA', 'Dashboard Completo', 'Até 5 Contas']
-        : price.interval === 'month' && price.interval_count === 3
-          ? ['Tudo do mensal', 'Suporte Prioritário', 'Análises Avançadas']
-          : ['Tudo do trimestral', 'Faturamento por IA', 'Consultoria Personalizada'],
-    stripePriceId: price.stripe_price_id,
-    popular: price.interval === 'month' && price.interval_count === 3,
-  }))
+          ? 'Trimestral'
+          : 'Anual',
+      price: `R$ ${(price.unit_amount / 100).toFixed(2).replace('.', ',')}`,
+      period: isMonthly ? '/mês' : isQuarterly ? '/trimestre' : '/ano',
+      discount: isQuarterly ? '33% OFF' : isYearly ? '44% OFF' : undefined,
+      pricePerMonth: isQuarterly
+        ? 'R$ 10/mês'
+        : isYearly
+          ? 'R$ 8,33/mês'
+          : undefined,
+      description: isMonthly
+        ? 'Gestão completa sem compromisso'
+        : isQuarterly
+          ? 'Economize com disciplina financeira'
+          : 'Liberdade total, preço imbatível',
+      features: isMonthly
+        ? ['Interações ilimitadas com IA', 'Transações ilimitadas', 'Até 5 contas bancárias', 'Dashboard com 6 indicadores', 'Gráficos avançados']
+        : isQuarterly
+          ? ['Tudo do plano mensal', 'Economize R$ 15 a cada 3 meses', 'Suporte prioritário', 'Cancele quando quiser']
+          : ['Tudo do plano mensal', 'Economize R$ 80 por ano', 'Melhor custo-benefício', 'Acesso antecipado a novidades'],
+      stripePriceId: price.stripe_price_id,
+      popular: isQuarterly,
+    }
+  })
 
   return (
     <div className="max-w-6xl mx-auto p-6">

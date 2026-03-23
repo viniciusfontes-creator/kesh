@@ -9,6 +9,8 @@ interface PricingCardProps {
   name: string
   price: string
   period: string
+  discount?: string
+  pricePerMonth?: string
   description: string
   features: string[]
   stripePriceId: string
@@ -22,6 +24,8 @@ export function PricingCard({
   name,
   price,
   period,
+  discount,
+  pricePerMonth,
   description,
   features,
   stripePriceId,
@@ -43,12 +47,24 @@ export function PricingCard({
         }`}
       >
         <div className="mb-6">
-          <h3 className="text-lg font-bold mb-1">{name}</h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-bold">{name}</h3>
+            {discount && (
+              <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                {discount}
+              </span>
+            )}
+          </div>
           <div className="flex items-baseline gap-1">
             <span className="text-3xl font-bold">{price}</span>
             <span className="text-muted-foreground text-xs">{period}</span>
           </div>
-          <p className="text-sm text-muted-foreground mt-2">{description}</p>
+          {pricePerMonth && (
+            <p className="text-xs text-muted-foreground font-medium mt-1">
+              {pricePerMonth}
+            </p>
+          )}
+          <p className="text-sm text-muted-foreground mt-3 leading-relaxed">{description}</p>
         </div>
 
         <div className="space-y-4 mb-8 flex-1">
