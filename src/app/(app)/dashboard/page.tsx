@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { DashboardClient } from '@/components/dashboard/dashboard-client'
+import { getUserSubscription } from '@/lib/subscription'
 
 interface DashboardPageProps {
     searchParams: Promise<{
@@ -22,6 +23,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     if (!user) {
         redirect('/login')
     }
+
+    // Check subscription status
+    const subscription = await getUserSubscription()
+    const isPremium = subscription.status === 'active' || subscription.status === 'trialing'
 
     // Default date range: Current month
     const now = new Date()
@@ -224,6 +229,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             contaId: contaId || 'all',
         },
         availableCategories: uniqueCategories,
+        isPremium,
     }
 
     return <DashboardClient data={dashboardData} />

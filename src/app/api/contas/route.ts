@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { getUserSubscription } from '@/lib/subscription'
 
 export async function GET() {
     try {
@@ -39,6 +40,26 @@ export async function POST(req: Request) {
 
         if (!nome || !tipo) {
             return NextResponse.json({ error: 'Nome e tipo são obrigatórios' }, { status: 400 })
+        }
+
+        // Check subscription and quota (free users limited to 1 account)
+        const subscription = await getUserSubscription()
+        const isPremium = subscription.status === 'active' || subscription.status === 'trialing'
+
+        if (!isPremium) {
+            // Count existing accounts
+            const { count } = await supabase
+                .from('contas')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id)
+
+            if (count !== null && count >= 1) {
+                return NextResponse.json({
+                    error: 'Limite de contas atingido',
+                    message: 'Você atingiu o limite de 1 conta bancária do plano gratuito. Faça upgrade para adicionar mais contas.',
+                    upgradeUrl: '/configuracoes/assinatura'
+                }, { status: 403 })
+            }
         }
 
         const { data, error } = await supabase

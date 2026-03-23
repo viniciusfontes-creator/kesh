@@ -1,11 +1,12 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Check } from 'lucide-react'
+import { Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 const plans = [
   {
@@ -14,6 +15,7 @@ const plans = [
     description: 'Gestão essencial.',
     features: ['Categorização por IA', 'Dashboard Completo', 'Até 5 Contas'],
     cta: 'Começar Agora',
+    stripePriceId: 'price_1TC6PBFz7A1qFfrQxpfZJMdU',
     popular: false
   },
   {
@@ -22,6 +24,7 @@ const plans = [
     description: 'Ideal para disciplina.',
     features: ['Tudo do mensal', 'Suporte Prioritário', 'Análises Avançadas'],
     cta: 'Economize Agora',
+    stripePriceId: 'price_1TC6PBFz7A1qFfrQtSPzk26x',
     popular: true
   },
   {
@@ -30,18 +33,61 @@ const plans = [
     description: 'Liberdade total.',
     features: ['Tudo do trimestral', 'Faturamento por IA', 'Consultoria Personalizada'],
     cta: 'Acesso Vitalício',
+    stripePriceId: 'price_1TC6PBFz7A1qFfrQ8Na74XcQ',
     popular: false
   }
 ]
 
 export function PricingSection() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [loading, setLoading] = useState<string | null>(null)
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+    const checkAuth = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      setIsAuthenticated(!!user)
+    }
+    checkAuth()
+  }, [])
+
+  async function handleSubscribe(priceId: string) {
+    try {
+      setLoading(priceId)
+
+      const response = await fetch('/api/stripe/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priceId }),
+      })
+
+      const data = await response.json()
+
+      if (data.error) {
+        alert(`Erro: ${data.error}`)
+        return
+      }
+
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch (error) {
+      console.error('Error creating checkout:', error)
+      alert('Erro ao processar pagamento. Tente novamente.')
+    } finally {
+      setLoading(null)
+    }
+  }
+
   return (
     <section id="pricing" className="py-24 bg-background">
       <div className="container px-4 mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Planos que acompanham seu crescimento</h2>
           <p className="text-muted-foreground max-w-xl mx-auto">
-            Escolha o plano que melhor se adapta ao seu momento financeiro. 
+            Escolha o plano que melhor se adapta ao seu momento financeiro.
             Sem taxas ocultas, transparência total.
           </p>
         </div>
@@ -82,14 +128,32 @@ export function PricingSection() {
                   ))}
                 </div>
 
-                <Link href="/signup">
-                  <Button 
+                {isMounted && isAuthenticated ? (
+                  <Button
+                    onClick={() => handleSubscribe(plan.stripePriceId)}
+                    disabled={loading !== null}
                     className={`w-full rounded-full transition-transform hover:scale-105 ${plan.popular ? 'bg-primary' : 'variant-outline'}`}
                     variant={plan.popular ? 'default' : 'outline'}
                   >
-                    {plan.cta}
+                    {loading === plan.stripePriceId ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Processando...
+                      </>
+                    ) : (
+                      plan.cta
+                    )}
                   </Button>
-                </Link>
+                ) : (
+                  <Link href="/signup">
+                    <Button
+                      className={`w-full rounded-full transition-transform hover:scale-105 ${plan.popular ? 'bg-primary' : 'variant-outline'}`}
+                      variant={plan.popular ? 'default' : 'outline'}
+                    >
+                      {plan.cta}
+                    </Button>
+                  </Link>
+                )}
               </Card>
             </motion.div>
           ))}

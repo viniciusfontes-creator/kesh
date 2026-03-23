@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { getUserSubscription } from '@/lib/subscription'
+import { checkTransactionsQuota, incrementTransactionsQuota } from '@/lib/quota'
 
 export async function GET(req: Request) {
     try {
@@ -61,6 +63,26 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Tipo, valor e categoria são obrigatórios' }, { status: 400 })
         }
 
+        // Check if transaction is manual (fonte === 'manual')
+        const isManualTransaction = body.fonte === 'manual' || !body.fonte
+
+        // Check subscription and quota for manual transactions
+        if (isManualTransaction) {
+            const subscription = await getUserSubscription()
+            const isPremium = subscription.status === 'active' || subscription.status === 'trialing'
+
+            if (!isPremium) {
+                const quotaStatus = await checkTransactionsQuota(user.id)
+                if (quotaStatus.exceeded) {
+                    return NextResponse.json({
+                        error: 'Limite de transações manuais atingido',
+                        message: `Você atingiu o limite de ${quotaStatus.limit} transações manuais por mês do plano gratuito. Faça upgrade para continuar adicionando transações.`,
+                        upgradeUrl: '/configuracoes/assinatura'
+                    }, { status: 403 })
+                }
+            }
+        }
+
         const { data, error } = await supabase
             .from('transactions')
             .insert({
@@ -70,7 +92,7 @@ export async function POST(req: Request) {
                 categoria: body.categoria,
                 descricao: body.descricao ?? null,
                 data: body.data ?? new Date().toISOString().split('T')[0],
-                fonte: 'manual',
+                fonte: body.fonte ?? 'manual',
                 status: body.status ?? 'pago',
                 data_vencimento: body.data_vencimento ?? null,
                 conta_id: body.conta_id ?? null,
@@ -84,6 +106,15 @@ export async function POST(req: Request) {
 
         if (error) {
             return NextResponse.json({ error: error.message }, { status: 500 })
+        }
+
+        // Increment quota for manual transactions by free users
+        if (isManualTransaction) {
+            const subscription = await getUserSubscription()
+            const isPremium = subscription.status === 'active' || subscription.status === 'trialing'
+            if (!isPremium) {
+                await incrementTransactionsQuota(user.id)
+            }
         }
 
         return NextResponse.json(data)

@@ -17,6 +17,8 @@ import {
     createNotificationTool,
 } from '@/lib/agent/tools'
 import { buildSystemPrompt, hashUserId } from '@/lib/agent/prompt'
+import { getUserSubscription } from '@/lib/subscription'
+import { checkChatQuota, incrementChatQuota } from '@/lib/quota'
 
 export const maxDuration = 60
 
@@ -33,6 +35,24 @@ export async function POST(req: Request) {
 
     if (!user) {
         return new Response('Unauthorized', { status: 401 })
+    }
+
+    // Check subscription and quota
+    const subscription = await getUserSubscription()
+    const isPremium = subscription.status === 'active' || subscription.status === 'trialing'
+
+    if (!isPremium) {
+        const quotaStatus = await checkChatQuota(user.id)
+        if (quotaStatus.exceeded) {
+            return new Response(
+                JSON.stringify({
+                    error: 'Limite de interações atingido',
+                    message: `Você atingiu o limite de ${quotaStatus.limit} interações por mês do plano gratuito. Faça upgrade para continuar usando o assistente.`,
+                    upgradeUrl: '/configuracoes/assinatura'
+                }),
+                { status: 403, headers: { 'Content-Type': 'application/json' } }
+            )
+        }
     }
 
     // Save last user message
@@ -175,6 +195,11 @@ export async function POST(req: Request) {
 
                 if (rows.length > 0) {
                     await supabase.from('chat_messages').insert(rows)
+                }
+
+                // Increment quota for free users
+                if (!isPremium) {
+                    await incrementChatQuota(user.id)
                 }
             },
         })

@@ -45,6 +45,7 @@ import {
 } from 'recharts'
 import { cn } from '@/lib/utils'
 import type { Transaction, Conta } from '@/types/database'
+import { IndicatorCardLocked } from '@/components/dashboard/indicator-card-locked'
 
 type ProjectionPoint = {
     name: string
@@ -76,6 +77,7 @@ interface DashboardClientProps {
             contaId: string
         }
         availableCategories: string[]
+        isPremium: boolean
     }
 }
 
@@ -114,6 +116,7 @@ export function DashboardClient({ data }: DashboardClientProps) {
         hasTransactions,
         filters,
         availableCategories,
+        isPremium,
     } = data
 
     const handleFilterChange = (key: string, value: string) => {
@@ -266,7 +269,7 @@ export function DashboardClient({ data }: DashboardClientProps) {
 
                 {/* Stat Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                    {/* Saldo Geral */}
+                    {/* Saldo Geral - Always visible */}
                     <motion.div variants={itemVariants}>
                         <Card className="rounded-[28px] border border-border/50 bg-card/50 backdrop-blur-md shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group h-full">
                             <CardHeader className="pb-2 pt-6 px-6">
@@ -284,7 +287,7 @@ export function DashboardClient({ data }: DashboardClientProps) {
                         </Card>
                     </motion.div>
 
-                    {/* Entradas - Clicável */}
+                    {/* Entradas - Always visible */}
                     <motion.div variants={itemVariants}>
                         <Card
                             className="rounded-[28px] border border-border/50 bg-card/50 backdrop-blur-md shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer h-full"
@@ -311,148 +314,170 @@ export function DashboardClient({ data }: DashboardClientProps) {
                         </Card>
                     </motion.div>
 
-                    {/* Saídas - Clicável */}
+                    {/* Saídas - Premium only */}
                     <motion.div variants={itemVariants}>
-                        <Card
-                            className="rounded-[28px] border border-border/50 bg-card/50 backdrop-blur-md shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer h-full"
-                            onClick={() => setDetailSheet('saidas')}
-                        >
-                            <CardHeader className="pb-2 pt-6 px-6">
-                                <CardTitle className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Saídas (Mês)</CardTitle>
-                            </CardHeader>
-                            <CardContent className="px-6 pb-6">
-                                <div className="text-3xl font-bold tracking-tight text-[#FF453A] dark:text-[#FF6961]">
-                                    {formatCurrency(monthExpenses)}
-                                </div>
-                                <div className="flex items-center justify-between mt-3">
-                                    <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
-                                        <ArrowDownRight className="w-4 h-4" />
-                                        <span className="text-xs font-semibold">Efetivado no período</span>
+                        {isPremium ? (
+                            <Card
+                                className="rounded-[28px] border border-border/50 bg-card/50 backdrop-blur-md shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer h-full"
+                                onClick={() => setDetailSheet('saidas')}
+                            >
+                                <CardHeader className="pb-2 pt-6 px-6">
+                                    <CardTitle className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Saídas (Mês)</CardTitle>
+                                </CardHeader>
+                                <CardContent className="px-6 pb-6">
+                                    <div className="text-3xl font-bold tracking-tight text-[#FF453A] dark:text-[#FF6961]">
+                                        {formatCurrency(monthExpenses)}
                                     </div>
-                                    <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Eye className="w-3 h-3" />
-                                        Ver +
+                                    <div className="flex items-center justify-between mt-3">
+                                        <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                                            <ArrowDownRight className="w-4 h-4" />
+                                            <span className="text-xs font-semibold">Efetivado no período</span>
+                                        </div>
+                                        <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Eye className="w-3 h-3" />
+                                            Ver +
+                                        </div>
                                     </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <IndicatorCardLocked title="Saídas (Mês)" icon={<ArrowDownRight className="w-5 h-5" />} />
+                        )}
                     </motion.div>
 
-                    {/* Recorrente Líquido */}
+                    {/* Recorrente Líquido - Premium only */}
                     <motion.div variants={itemVariants}>
-                        <Card className="rounded-[28px] border border-border/50 bg-card/50 backdrop-blur-md shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group h-full">
-                            <CardHeader className="pb-2 pt-6 px-6">
-                                <CardTitle className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Recorrente Líq.</CardTitle>
-                            </CardHeader>
-                            <CardContent className="px-6 pb-6">
-                                <div className={cn(
-                                    "text-3xl font-bold tracking-tight",
-                                    netRecurring >= 0 ? 'text-[#007AFF] dark:text-[#64D2FF]' : 'text-[#FF453A] dark:text-[#FF6961]'
-                                )}>
-                                    {formatCurrency(netRecurring)}
-                                </div>
-                                <div className="flex items-center gap-1.5 mt-3 opacity-60 group-hover:opacity-100 transition-opacity">
-                                    <Repeat className="w-4 h-4" />
-                                    <span className="text-xs font-semibold">Receitas - Despesas fixas</span>
-                                </div>
-                            </CardContent>
-                        </Card>
+                        {isPremium ? (
+                            <Card className="rounded-[28px] border border-border/50 bg-card/50 backdrop-blur-md shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group h-full">
+                                <CardHeader className="pb-2 pt-6 px-6">
+                                    <CardTitle className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Recorrente Líq.</CardTitle>
+                                </CardHeader>
+                                <CardContent className="px-6 pb-6">
+                                    <div className={cn(
+                                        "text-3xl font-bold tracking-tight",
+                                        netRecurring >= 0 ? 'text-[#007AFF] dark:text-[#64D2FF]' : 'text-[#FF453A] dark:text-[#FF6961]'
+                                    )}>
+                                        {formatCurrency(netRecurring)}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-3 opacity-60 group-hover:opacity-100 transition-opacity">
+                                        <Repeat className="w-4 h-4" />
+                                        <span className="text-xs font-semibold">Receitas - Despesas fixas</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <IndicatorCardLocked title="Recorrente Líquido" icon={<Repeat className="w-5 h-5" />} />
+                        )}
                     </motion.div>
                 </div>
 
                 {/* Charts Row */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Fluxo Mensal - Premium only */}
                     <motion.div variants={itemVariants}>
-                        <Card className="rounded-[32px] border border-border/40 bg-card/40 backdrop-blur-md shadow-sm p-8">
-                            <div className="flex items-center justify-between mb-10">
-                                <div className="space-y-1">
-                                    <h3 className="font-bold text-xl tracking-tight">Fluxo Mensal (Realizado)</h3>
-                                    <p className="text-sm text-muted-foreground font-medium">Entradas vs Saídas nos últimos 6 meses.</p>
-                                </div>
-                            </div>
-                            <div className="h-[300px] w-full">
-                                {isMounted ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={projectionData}>
-                                            <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="currentColor" className="opacity-[0.05]" />
-                                            <XAxis
-                                                dataKey="name"
-                                                axisLine={false}
-                                                tickLine={false}
-                                                tick={{ fontSize: 11, fontWeight: 600, fill: 'currentColor', opacity: 0.4 }}
-                                                dy={15}
-                                            />
-                                            <YAxis
-                                                axisLine={false}
-                                                tickLine={false}
-                                                tick={{ fontSize: 11, fontWeight: 600, fill: 'currentColor', opacity: 0.4 }}
-                                                tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`}
-                                            />
-                                            <Tooltip
-                                                contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '20px', border: '1px solid var(--border)', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px 16px' }}
-                                                itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
-                                                formatter={(value) => formatCurrency(value as number)}
-                                            />
-                                            <Legend verticalAlign="top" height={40} iconType="circle" />
-                                            <Line type="monotone" dataKey="Entradas" stroke="#05C168" strokeWidth={4} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-                                            <Line type="monotone" dataKey="Saídas" stroke="#FF453A" strokeWidth={4} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                ) : (
-                                    <div className="h-full w-full flex items-center justify-center opacity-20">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground" />
+                        {isPremium ? (
+                            <Card className="rounded-[32px] border border-border/40 bg-card/40 backdrop-blur-md shadow-sm p-8">
+                                <div className="flex items-center justify-between mb-10">
+                                    <div className="space-y-1">
+                                        <h3 className="font-bold text-xl tracking-tight">Fluxo Mensal (Realizado)</h3>
+                                        <p className="text-sm text-muted-foreground font-medium">Entradas vs Saídas nos últimos 6 meses.</p>
                                     </div>
-                                )}
+                                </div>
+                                <div className="h-[300px] w-full">
+                                    {isMounted ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart data={projectionData}>
+                                                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="currentColor" className="opacity-[0.05]" />
+                                                <XAxis
+                                                    dataKey="name"
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fontSize: 11, fontWeight: 600, fill: 'currentColor', opacity: 0.4 }}
+                                                    dy={15}
+                                                />
+                                                <YAxis
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fontSize: 11, fontWeight: 600, fill: 'currentColor', opacity: 0.4 }}
+                                                    tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`}
+                                                />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '20px', border: '1px solid var(--border)', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px 16px' }}
+                                                    itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                                                    formatter={(value) => formatCurrency(value as number)}
+                                                />
+                                                <Legend verticalAlign="top" height={40} iconType="circle" />
+                                                <Line type="monotone" dataKey="Entradas" stroke="#05C168" strokeWidth={4} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                                                <Line type="monotone" dataKey="Saídas" stroke="#FF453A" strokeWidth={4} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="h-full w-full flex items-center justify-center opacity-20">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground" />
+                                        </div>
+                                    )}
+                                </div>
+                            </Card>
+                        ) : (
+                            <div className="min-h-[400px]">
+                                <IndicatorCardLocked title="Fluxo Mensal (Realizado)" icon={<TrendingUp className="w-5 h-5" />} />
                             </div>
-                        </Card>
+                        )}
                     </motion.div>
 
+                    {/* Evolução Patrimonial - Premium only */}
                     <motion.div variants={itemVariants}>
-                        <Card className="rounded-[32px] border border-border/40 bg-card/40 backdrop-blur-md shadow-sm p-8">
-                            <div className="flex items-center justify-between mb-10">
-                                <div className="space-y-1">
-                                    <h3 className="font-bold text-xl tracking-tight">Evolução Patrimonial</h3>
-                                    <p className="text-sm text-muted-foreground font-medium">Crescimento real do seu saldo acumulado.</p>
-                                </div>
-                            </div>
-                            <div className="h-[300px] w-full">
-                                {isMounted ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={projectionData}>
-                                            <defs>
-                                                <linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#007AFF" stopOpacity={0.15} />
-                                                    <stop offset="95%" stopColor="#007AFF" stopOpacity={0} />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="currentColor" className="opacity-[0.05]" />
-                                            <XAxis
-                                                dataKey="name"
-                                                axisLine={false}
-                                                tickLine={false}
-                                                tick={{ fontSize: 11, fontWeight: 600, fill: 'currentColor', opacity: 0.4 }}
-                                                dy={15}
-                                            />
-                                            <YAxis
-                                                axisLine={false}
-                                                tickLine={false}
-                                                tick={{ fontSize: 11, fontWeight: 600, fill: 'currentColor', opacity: 0.4 }}
-                                                tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`}
-                                            />
-                                            <Tooltip
-                                                contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '20px', border: '1px solid var(--border)', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px 16px' }}
-                                                formatter={(value) => formatCurrency(value as number)}
-                                            />
-                                            <Area type="monotone" dataKey="Saldo" stroke="#007AFF" strokeWidth={4} fillOpacity={1} fill="url(#colorSaldo)" />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
-                                ) : (
-                                    <div className="h-full w-full flex items-center justify-center opacity-20">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground" />
+                        {isPremium ? (
+                            <Card className="rounded-[32px] border border-border/40 bg-card/40 backdrop-blur-md shadow-sm p-8">
+                                <div className="flex items-center justify-between mb-10">
+                                    <div className="space-y-1">
+                                        <h3 className="font-bold text-xl tracking-tight">Evolução Patrimonial</h3>
+                                        <p className="text-sm text-muted-foreground font-medium">Crescimento real do seu saldo acumulado.</p>
                                     </div>
-                                )}
+                                </div>
+                                <div className="h-[300px] w-full">
+                                    {isMounted ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={projectionData}>
+                                                <defs>
+                                                    <linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#007AFF" stopOpacity={0.15} />
+                                                        <stop offset="95%" stopColor="#007AFF" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="currentColor" className="opacity-[0.05]" />
+                                                <XAxis
+                                                    dataKey="name"
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fontSize: 11, fontWeight: 600, fill: 'currentColor', opacity: 0.4 }}
+                                                    dy={15}
+                                                />
+                                                <YAxis
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fontSize: 11, fontWeight: 600, fill: 'currentColor', opacity: 0.4 }}
+                                                    tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`}
+                                                />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '20px', border: '1px solid var(--border)', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px 16px' }}
+                                                    formatter={(value) => formatCurrency(value as number)}
+                                                />
+                                                <Area type="monotone" dataKey="Saldo" stroke="#007AFF" strokeWidth={4} fillOpacity={1} fill="url(#colorSaldo)" />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="h-full w-full flex items-center justify-center opacity-20">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground" />
+                                        </div>
+                                    )}
+                                </div>
+                            </Card>
+                        ) : (
+                            <div className="min-h-[400px]">
+                                <IndicatorCardLocked title="Evolução Patrimonial" icon={<TrendingUp className="w-5 h-5" />} />
                             </div>
-                        </Card>
+                        )}
                     </motion.div>
                 </div>
 

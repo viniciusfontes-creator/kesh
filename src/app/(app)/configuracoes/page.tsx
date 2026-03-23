@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { CreditCard, Landmark, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import SettingsClient, { type UserProfile } from './settings-client'
+import { getUserSubscription } from '@/lib/subscription'
+import Link from 'next/link'
 
 export default async function SettingsPage() {
     const supabase = await createClient()
@@ -31,6 +33,18 @@ export default async function SettingsPage() {
         data_privacy_accepted: profileRow?.data_privacy_accepted ?? false,
         data_privacy_accepted_at: profileRow?.data_privacy_accepted_at ?? null,
     }
+
+    // Fetch subscription status
+    const subscription = await getUserSubscription()
+    const isPremium = subscription.status === 'active' || subscription.status === 'trialing'
+
+    // Format subscription display
+    const planDisplay = isPremium
+        ? subscription.planName || 'Premium'
+        : 'Free Plan'
+
+    const statusColor = isPremium ? 'text-emerald-500' : 'text-muted-foreground'
+    const statusBg = isPremium ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-muted/40 border-border/40'
 
     return (
         <div className="flex flex-col h-full w-full p-6 md:px-12 md:py-10 space-y-10 max-w-5xl mx-auto pb-40 md:pb-12">
@@ -62,20 +76,40 @@ export default async function SettingsPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="px-6 pb-6 flex-1 flex flex-col justify-between">
-                        <div className="p-6 rounded-[22px] bg-foreground text-background shadow-xl shadow-foreground/10 relative overflow-hidden group">
+                        <div className={`p-6 rounded-[22px] shadow-xl relative overflow-hidden group ${isPremium ? 'bg-foreground text-background shadow-foreground/10' : 'bg-muted/60 text-foreground shadow-muted/20'}`}>
                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-background/10 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
                            <div className="relative z-10 flex justify-between items-center">
                                <div>
-                                   <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Status</span>
-                                   <div className="text-2xl font-black tracking-tight">Free Plan</div>
+                                   <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${isPremium ? 'opacity-60' : 'opacity-50'}`}>Status</span>
+                                   <div className="text-2xl font-black tracking-tight">{planDisplay}</div>
                                </div>
-                               <div className="text-4xl font-black">R$0</div>
+                               <div className="text-4xl font-black">
+                                   {isPremium ? (
+                                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs ${statusBg} ${statusColor} font-bold uppercase tracking-wider`}>
+                                           Ativo
+                                       </span>
+                                   ) : (
+                                       'R$0'
+                                   )}
+                               </div>
                            </div>
-                           <p className="mt-4 text-xs font-medium opacity-70 leading-relaxed">Você tem acesso ao assistente básico e dashboard limitado.</p>
+                           <p className={`mt-4 text-xs font-medium leading-relaxed ${isPremium ? 'opacity-70' : 'opacity-60'}`}>
+                               {isPremium
+                                   ? 'Acesso completo a todos os recursos premium.'
+                                   : 'Você tem acesso ao assistente básico e dashboard limitado.'
+                               }
+                           </p>
+                           {isPremium && subscription.currentPeriodEnd && (
+                               <p className="mt-2 text-[10px] font-bold opacity-50">
+                                   Renovação: {new Date(subscription.currentPeriodEnd).toLocaleDateString('pt-BR')}
+                               </p>
+                           )}
                         </div>
-                        <Button variant="outline" className="w-full h-11 rounded-[18px] font-bold text-sm border-border hover:bg-muted mt-4">
-                            Upgrade para o Pro
-                        </Button>
+                        <Link href="/configuracoes/assinatura" className="w-full mt-4">
+                            <Button variant="outline" className="w-full h-11 rounded-[18px] font-bold text-sm border-border hover:bg-muted">
+                                {isPremium ? 'Gerenciar Assinatura' : 'Upgrade para o Pro'}
+                            </Button>
+                        </Link>
                     </CardContent>
                 </Card>
 

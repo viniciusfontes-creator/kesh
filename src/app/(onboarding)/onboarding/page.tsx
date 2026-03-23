@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react'
 import { StepProfile } from '@/components/onboarding/step-profile'
 import { StepFeatures } from '@/components/onboarding/step-features'
 import { StepUpload } from '@/components/onboarding/step-upload'
+import { StepPlan } from '@/components/onboarding/step-plan'
 import { StepComplete } from '@/components/onboarding/step-complete'
 
 interface ProfileData {
@@ -16,7 +17,7 @@ interface ProfileData {
     onboarding_step: number
 }
 
-const STEP_LABELS = ['Perfil', 'Funcionalidades', 'Extrato', 'Pronto']
+const STEP_LABELS = ['Perfil', 'Funcionalidades', 'Extrato', 'Plano', 'Pronto']
 
 export default function OnboardingPage() {
     const [step, setStep] = useState(-1) // -1 = loading
@@ -47,7 +48,7 @@ export default function OnboardingPage() {
         setStep(nextStep)
 
         // Persist step progress (non-blocking)
-        if (nextStep < 4) {
+        if (nextStep < 5) {
             fetch('/api/onboarding/profile', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -66,9 +67,9 @@ export default function OnboardingPage() {
     }
 
     return (
-        <div className="w-full max-w-[560px] mx-auto">
+        <div className="w-full max-w-[960px] mx-auto">
             {/* Progress bar */}
-            {step < 4 && (
+            {step < 5 && (
                 <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -126,6 +127,14 @@ export default function OnboardingPage() {
                 )}
 
                 {step === 3 && (
+                    <StepPlan
+                        key="plan"
+                        onComplete={() => advanceStep(4)}
+                        onSkip={() => advanceStep(4)}
+                    />
+                )}
+
+                {step === 4 && (
                     <StepComplete
                         key="complete"
                         importedCount={importedCount}
